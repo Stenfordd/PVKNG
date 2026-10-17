@@ -5,6 +5,5 @@
   "push_interval_seconds": 2,
   "min_fight_seconds": 20,
   "resume_session": true,
-  "crit_bit": "0x100",
-  "dh_bit": "0x200"
+  "min_fight_seconds_dungeon": 3
 }

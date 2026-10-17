@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Z jedné šablony src/page.html vygeneruje dvě varianty webu:
+"""Z jedné šablony src/page.html vygeneruje tři varianty webu:
   appsscript/Index.html  - stránka servírovaná přímo z Apps Scriptu
-  index.html             - stránka pro GitHub Pages (data čte z Apps Scriptu přes JSONP)
+  docs/index.html        - stránka pro GitHub Pages (data čte z Apps Scriptu přes JSONP)
+  web/index.html         - stránka pro klasický hosting s receive.php
 """
 import os
 
@@ -41,8 +42,8 @@ fav = f'<link rel="icon" type="image/png" href="{FAVICON}">'
 
 for out, loader, with_fav in (
         ("appsscript/Index.html", LOADER_APPS, False),   # favicon se tam nastavuje v Code.gs
-        ("index.html", LOADER_GH, True)
-        ):
+        ("docs/index.html", LOADER_GH, True),
+        ("web/index.html", LOADER_WEB, True)):
     html = page.replace("/*__LOADER__*/", loader).replace("<!--FAVICON-->", fav if with_fav else "")
     path = os.path.join(ROOT, out)
     os.makedirs(os.path.dirname(path), exist_ok=True)

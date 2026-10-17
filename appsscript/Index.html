@@ -98,12 +98,34 @@
   .empty strong{display:block;color:var(--text);font-weight:500;font-size:17px;margin-bottom:4px}
 
   .fights{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-  .frow{display:grid;grid-template-columns:minmax(0,1fr) 90px 110px;column-gap:12px;padding:11px 16px;align-items:center}
+  .fsum{padding:12px 16px;color:var(--dim);border-bottom:1px solid var(--line);font-size:14px}
+  .frow{display:grid;grid-template-columns:minmax(0,1fr) 150px 76px 100px;column-gap:12px;padding:10px 16px;align-items:center}
   .frow+.frow{border-top:1px solid var(--line)}
-  .frow.hd{color:var(--dim);font-size:13px;padding-bottom:6px}
+  .frow.hd{color:var(--dim);font-size:13px;padding-top:8px;padding-bottom:6px}
   .frow .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frow .res{text-align:right;white-space:nowrap}
   .frow .n{font:600 20px var(--num);font-variant-numeric:tabular-nums;text-align:right}
+  .frow.best .n{color:var(--gold)}
   .frow .d{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+  .chip{display:inline-block;font-size:12px;line-height:18px;padding:0 9px;border-radius:99px;border:1px solid var(--line);margin-left:6px;color:var(--dim)}
+  .chip.kill{color:var(--ok);border-color:rgba(70,207,138,.45)}
+  .chip.wipe{color:var(--bad);border-color:rgba(255,106,99,.45)}
+  .chip.boss{color:var(--gold);border-color:rgba(226,185,94,.5)}
+  .grp+.grp{border-top:1px solid var(--line)}
+  .ghead{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 140px 100px 170px;gap:8px;align-items:center;
+    width:100%;padding:12px 16px;cursor:pointer;background:rgba(140,165,230,.05)}
+  .ghead:hover{background:rgba(140,165,230,.1)}
+  .ghead:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+  .gt{font-weight:500;font-size:16px}
+  .gt::before{content:'\25B8';display:inline-block;width:18px;color:var(--dim)}
+  .grp.open .gt::before{content:'\25BE'}
+  .gt small{display:block;margin-left:18px;color:var(--dim);font-size:13px;font-weight:400}
+  .gs{color:#b4c0dc;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+  .kind{font-size:12px;line-height:18px;padding:0 10px;border-radius:99px;border:1px solid var(--line);color:var(--text)}
+  .kind.dungeon{color:#5fd6c9;border-color:rgba(95,214,201,.45)}
+  .kind.raid{color:var(--gold);border-color:rgba(226,185,94,.5)}
+  .kind.trial{color:#b69cff;border-color:rgba(182,156,255,.45)}
+  .kind.ultimate{color:#ff9a5c;border-color:rgba(255,154,92,.5)}
 
   @media (max-width:760px){
     .grid,.head{grid-template-columns:46px minmax(0,1fr) 62px 76px}
@@ -112,6 +134,9 @@
     .row.open .detail>.inner{padding:12px 12px 14px 14px;overflow-x:auto}
     .big span{font-size:38px}
     .mini{width:50px}
+    .frow{grid-template-columns:minmax(0,1fr) auto 64px 80px;column-gap:8px;padding:10px 12px}
+    .ghead{grid-template-columns:minmax(0,1fr) auto;padding:12px}
+    .ghead .gs:nth-of-type(n+3){display:none}
   }
   @media (prefers-reduced-motion:reduce){
     .fill,.detail{transition:none} .pill.live i{animation:none}
@@ -123,7 +148,7 @@
   <header>
     <div>
       <h1>Phantom Vikings</h1>
-      <div class="enc"><span id="encTitle">Waiting for data</span><span id="encZone"></span><span id="encTime"></span></div>
+      <div class="enc"><span id="kind" class="kind" hidden></span><span id="encTitle">Waiting for data</span><span id="encZone"></span><span id="encTime"></span></div>
     </div>
     <div class="raid">
       <div class="big"><span id="raidDps">0</span><small>raid DPS</small></div>
@@ -172,7 +197,10 @@ const JOBS = {PLD:'Paladin',WAR:'Warrior',DRK:'Dark Knight',GNB:'Gunbreaker',WHM
 const TANKS = ['PLD','WAR','DRK','GNB'], HEALERS = ['WHM','SCH','AST','SGE'];
 const roleOf = j => TANKS.includes(j) ? 'tank' : HEALERS.includes(j) ? 'heal' : 'dps';
 
-const state = { data: null, tab: 'live', open: new Set() };
+const state = { data: null, tab: 'live', open: new Set(), groupOpen: {} };
+const KIND_LABEL = { dungeon: 'Dungeon', raid: 'Raid', trial: 'Trial', ultimate: 'Ultimate' };
+const TAB_LABELS = { dungeon: ['Live', 'Run', 'Pulls'], raid: ['Live', 'Tonight', 'Attempts'], other: ['Live', 'Overall', 'Fights'] };
+const modeOf = k => k === 'dungeon' ? 'dungeon' : (k === 'raid' || k === 'trial' || k === 'ultimate') ? 'raid' : 'other';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -266,6 +294,77 @@ function renderMeter(container, players, scope, me) {
   return players.length;
 }
 
+/* ---------- fights / pulls ---------- */
+function chips(h) {
+  let c = '';
+  if (h.boss) c += '<span class="chip boss">Boss</span>';
+  if (h.result === 'kill') c += '<span class="chip kill">Kill</span>';
+  else if (h.result === 'wipe') c += '<span class="chip wipe">Wipe</span>';
+  return c;
+}
+const frow = (title, h, best) => `<div class="frow${best ? ' best' : ''}"><span class="t">${esc(title)}</span>
+  <span class="res">${chips(h)}</span><span class="d">${dur(h.duration)}</span><span class="n">${fmt(h.dps)}</span></div>`;
+const FHEAD = '<div class="frow hd"><span>Pull</span><span></span><span class="r d">Length</span><span class="r d">Raid DPS</span></div>';
+function groupHTML(key, open, title, sub, stats, body) {
+  return `<div class="grp${open ? ' open' : ''}"><button class="ghead" data-g="${esc(key)}" aria-expanded="${open}">
+    <span class="gt">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>
+    ${stats.map(x => `<span class="gs">${esc(x)}</span>`).join('')}</button>${open ? FHEAD + body : ''}</div>`;
+}
+
+function renderFights(d, ctx, mode) {
+  const all = d.history || [];
+  let html = '', empty = ['No pulls yet', 'Each pull shows up here when it ends.'];
+  if (mode === 'raid') {
+    const groups = new Map();
+    all.forEach((h, idx) => {
+      if (h.kind === 'dungeon') return;
+      const k = (h.zone || '') + '|' + h.title;
+      if (!groups.has(k)) groups.set(k, { hs: [], last: 0 });
+      const g = groups.get(k); g.hs.push(h); g.last = idx;
+    });
+    [...groups.entries()].sort((a, b) => b[1].last - a[1].last).forEach(([k, g], i) => {   // boss s nejnovějším pullem nahoře
+      const hs = g.hs;
+      const open = state.groupOpen[k] !== undefined ? state.groupOpen[k] : i === 0;
+      const kills = hs.filter(h => h.result === 'kill');
+      const best = Math.max(...hs.map(h => h.dps));
+      const fastest = kills.length ? Math.min(...kills.map(h => h.duration)) : 0;
+      html += groupHTML(k, open, hs[0].title || 'Unnamed fight', hs[0].zone,
+        [hs.length + (hs.length === 1 ? ' pull' : ' pulls') + (kills.length ? ', ' + kills.length + (kills.length === 1 ? ' kill' : ' kills') : ''),
+         'Best ' + fmt(best), fastest ? 'Fastest kill ' + dur(fastest) : ''],
+        [...hs].reverse().map(h => frow('Pull ' + (h.pull || '?'), h, h.dps === best)).join(''));
+    });
+    empty = ['No attempts yet', 'Every pull on a boss is listed here, grouped by boss, with the best one highlighted.'];
+  } else if (mode === 'dungeon') {
+    const list = all.filter(h => h.kind === 'dungeon' && h.run === ctx.run);
+    const bosses = list.filter(h => h.boss), trash = list.filter(h => !h.boss);
+    if (list.length) {
+      const total = list.reduce((a, h) => a + h.duration, 0);
+      html += `<div class="fsum">${list.length} ${list.length === 1 ? 'pull' : 'pulls'} in this run: ${bosses.length} boss, ${trash.length} trash, ${dur(total)} in combat</div>`;
+      html += (bosses.length ? FHEAD : '') + [...bosses].reverse().map(h => frow(h.title || 'Boss', h, false)).join('');
+      if (trash.length) {
+        const key = 'trash:' + ctx.run, open = !!state.groupOpen[key];
+        html += groupHTML(key, open, 'Trash pulls', '', [trash.length + ' pulls', dur(trash.reduce((a, h) => a + h.duration, 0)) + ' in combat'],
+          [...trash].reverse().map(h => frow(h.title || 'Pull ' + h.pull, h, false)).join(''));
+      }
+    }
+    empty = ['No pulls in this run yet', 'Trash and boss pulls are listed here. Boss and trash are told apart by a guess, so a few may land on the wrong side.'];
+  } else {
+    const list = [...all].filter(h => h.kind !== 'dungeon').slice(-40).reverse();
+    if (list.length) html = FHEAD + list.map(h => frow(h.title || 'Unnamed fight', h, false)).join('');
+    empty = ['No finished fights yet', 'A fight is saved when it ends and lasted at least 10 seconds.'];
+  }
+  $('#fightList').innerHTML = html;
+  $('#fightList').hidden = !html;
+  $('#emptyFights').hidden = !!html;
+  $('#emptyFights').innerHTML = `<strong>${esc(empty[0])}</strong>${esc(empty[1])}`;
+}
+
+document.getElementById('fightList').addEventListener('click', e => {
+  const b = e.target.closest('[data-g]'); if (!b) return;
+  state.groupOpen[b.dataset.g] = b.getAttribute('aria-expanded') !== 'true';
+  render();
+});
+
 /* ---------- render ---------- */
 function render() {
   const d = state.data;
@@ -275,8 +374,14 @@ function render() {
   if (!d) return;
 
   const l = d.live || {};
+  const ctx = d.ctx || { kind: 'other', run: 0 };
+  const mode = modeOf(ctx.kind);
   $('#encTitle').textContent = l.title || 'No encounter';
-  $('#encZone').textContent = l.zone || '';
+  $('#encZone').textContent = ctx.duty || ctx.zone || l.zone || '';
+  const kc = $('#kind'), kt = KIND_LABEL[ctx.kind];
+  kc.hidden = !kt; kc.textContent = kt || ''; kc.className = 'kind ' + (ctx.kind || '');
+  const labels = TAB_LABELS[mode];
+  document.querySelectorAll('nav button').forEach((b, i) => { b.textContent = labels[i]; });
   $('#encTime').textContent = l.duration ? dur(l.duration) : '';
   $('#raidDps').textContent = fmt(l.dps);
 
@@ -288,17 +393,15 @@ function render() {
     const o = d.overall || { players: [] };
     const n = renderMeter($('#meterOverall'), o.players || [], 'overall', d.me);
     $('#emptyOverall').hidden = n > 0;
+    const scope = mode === 'dungeon' ? 'This run' : 'Tonight';
     $('#noteOverall').textContent = n
-      ? `${o.fights} ${o.fights === 1 ? 'fight' : 'fights'}, ${dur(o.time)} in combat` + (o.includes_live ? ', includes the fight in progress' : '')
+      ? `${scope}: ${o.fights} ${o.fights === 1 ? 'pull' : 'pulls'}, ${dur(o.time)} in combat` + (o.includes_live ? ', includes the pull in progress' : '')
       : '';
+    $('#emptyOverall').innerHTML = mode === 'dungeon'
+      ? '<strong>Nothing recorded in this run yet</strong>The run starts from zero each time you enter a dungeon.'
+      : '<strong>Nothing recorded tonight</strong>Pulls are added while they run and stay in the totals.';
   } else {
-    const h = [...(d.history || [])].reverse();
-    $('#emptyFights').hidden = h.length > 0;
-    $('#fightList').hidden = !h.length;
-    $('#fightList').innerHTML = !h.length ? '' :
-      '<div class="frow hd"><span>Fight</span><span class="r d">Length</span><span class="r d">Raid DPS</span></div>' +
-      h.map(f => `<div class="frow"><span class="t">${esc(f.title || 'Unnamed fight')}</span>
-        <span class="d">${dur(f.duration)}</span><span class="n">${fmt(f.dps)}</span></div>`).join('');
+    renderFights(d, ctx, mode);
   }
 }
 
