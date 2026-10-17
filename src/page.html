@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phantom Vikings DPS</title>
+<!--FAVICON-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Cinzel:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0f1f; --panel:#10183a; --raise:#162250; --line:rgba(140,165,230,.13);
+    --text:#e7edf9; --dim:#8d9cc0; --gold:#e2b95e; --ok:#46cf8a; --warn:#f0b45a; --bad:#ff6a63;
+    --ui:'Barlow',system-ui,'Segoe UI',Roboto,sans-serif;
+    --num:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+    --title:'Cinzel',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{background:var(--ink)}
+  body{margin:0;color:var(--text);font:15px/1.45 var(--ui);min-height:100vh;
+    background:radial-gradient(900px 420px at 12% -8%,rgba(77,140,255,.16),transparent 62%),
+               radial-gradient(700px 360px at 100% 0%,rgba(226,185,94,.07),transparent 60%),var(--ink)}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px 56px}
+  .dim{color:var(--dim)}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:28px 0 16px}
+  h1{font:600 25px/1.1 var(--title);letter-spacing:.02em;margin:0}
+  .enc{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;color:var(--dim);min-height:22px}
+  .enc #encTitle{color:var(--text);font-weight:500}
+  .raid{display:flex;align-items:center;gap:18px}
+  .big{display:flex;align-items:baseline;gap:8px}
+  .big span{font:600 46px/1 var(--num);font-variant-numeric:tabular-nums}
+  .big small{color:var(--dim);font-size:14px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:99px;
+    background:rgba(140,165,230,.09);border:1px solid var(--line);font-size:13px;color:var(--dim)}
+  .pill i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+  .pill.live{color:var(--text)} .pill.live i{background:var(--ok);box-shadow:0 0 0 0 rgba(70,207,138,.6);animation:pulse 1.8s infinite}
+  .pill.stale i{background:var(--warn)} .pill.stale{color:var(--warn)}
+  .pill.dead i{background:var(--bad)} .pill.dead{color:var(--bad)}
+  @keyframes pulse{70%{box-shadow:0 0 0 7px rgba(70,207,138,0)}100%{box-shadow:0 0 0 0 rgba(70,207,138,0)}}
+
+  nav{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  nav button{background:none;border:0;color:var(--dim);font:500 16px var(--ui);padding:10px 0 11px;cursor:pointer;
+    border-bottom:2px solid transparent;margin-bottom:-1px}
+  nav button:hover{color:var(--text)}
+  nav button[aria-selected="true"]{color:var(--text);border-color:var(--gold)}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+
+  .note{color:var(--dim);font-size:13px;margin:0 2px 8px;min-height:19px}
+
+  /* meter */
+  .grid{display:grid;grid-template-columns:52px minmax(0,1fr) 62px 86px 108px 66px 66px 190px;align-items:center;column-gap:8px}
+  .cols{padding:0 14px 6px 0;color:var(--dim);font-size:13px}
+  .r{text-align:right}
+  .meter{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .row+.row{border-top:1px solid var(--line)}
+  .row{--rgb:255,106,99}
+  .row.tank{--rgb:77,140,255} .row.heal{--rgb:70,207,138} .row.dps{--rgb:255,106,99}
+  .head{all:unset;box-sizing:border-box;display:grid;grid-template-columns:52px minmax(0,1fr) 62px 86px 108px 66px 66px 190px;
+    align-items:center;column-gap:8px;width:100%;min-height:46px;padding:5px 14px 5px 0;position:relative;cursor:pointer}
+  .head:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+  .head:hover .fill{filter:brightness(1.25)}
+  .fill{position:absolute;left:0;top:0;bottom:0;width:0;z-index:0;
+    background:linear-gradient(90deg,rgba(var(--rgb),.30),rgba(var(--rgb),.07));
+    border-right:2px solid rgba(var(--rgb),.7);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+  .head>:not(.fill){position:relative;z-index:1}
+  .row.me .head{box-shadow:inset 3px 0 0 var(--gold)}
+  .row.me .name{color:var(--gold)}
+  .badge{justify-self:center;font:600 13px var(--num);letter-spacing:.04em;padding:2px 0;width:40px;text-align:center;
+    border-radius:5px;background:rgba(var(--rgb),.22);border:1px solid rgba(var(--rgb),.6)}
+  .name{font-weight:500;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .share{color:#b4c0dc;font-size:14px;font-variant-numeric:tabular-nums}
+  .dps{font:600 23px var(--num);font-variant-numeric:tabular-nums}
+  .dmg,.c1,.c2,.c3{color:#b4c0dc;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .c3{overflow:hidden;text-overflow:ellipsis}
+  .c3 b{color:var(--text);font-weight:500}
+
+  .detail{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s ease}
+  .row.open .detail{grid-template-rows:1fr}
+  .detail>.inner{overflow:hidden;min-height:0;background:rgba(5,9,25,.42)}
+  .row.open .detail>.inner{padding:14px 16px 16px 52px;border-top:1px solid var(--line)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;color:var(--dim);font-size:14px}
+  .chips b{color:var(--text);font-weight:500;margin-left:5px}
+  table.sp{width:100%;border-collapse:collapse;font-size:14px}
+  .sp th{color:var(--dim);font-weight:400;text-align:right;padding:3px 8px 6px;font-size:13px}
+  .sp td{padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums;border-top:1px solid var(--line)}
+  .sp th:first-child,.sp td:first-child{text-align:left;padding-left:0}
+  .sp td:first-child{color:var(--text)}
+  .sp td{color:#c4cfe8}
+  .sp tr.other td:first-child{color:var(--dim);font-style:italic}
+  .pc{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .mini{width:90px;height:6px;border-radius:3px;background:rgba(140,165,230,.12);overflow:hidden}
+  .mini i{display:block;height:100%;border-radius:3px;background:rgba(var(--rgb),.85)}
+  .pc b{font-weight:500;min-width:46px;text-align:right;color:var(--text)}
+  .empty{padding:44px 20px;text-align:center;color:var(--dim)}
+  .empty strong{display:block;color:var(--text);font-weight:500;font-size:17px;margin-bottom:4px}
+
+  .fights{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .frow{display:grid;grid-template-columns:minmax(0,1fr) 90px 110px;column-gap:12px;padding:11px 16px;align-items:center}
+  .frow+.frow{border-top:1px solid var(--line)}
+  .frow.hd{color:var(--dim);font-size:13px;padding-bottom:6px}
+  .frow .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frow .n{font:600 20px var(--num);font-variant-numeric:tabular-nums;text-align:right}
+  .frow .d{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+
+  @media (max-width:760px){
+    .grid,.head{grid-template-columns:46px minmax(0,1fr) 62px 76px}
+    .hm,.mini{display:none}
+    .dmg,.c1,.c2,.c3,.cols .dmgh,.cols .h1,.cols .h2,.cols .h3{display:none}
+    .row.open .detail>.inner{padding:12px 12px 14px 14px;overflow-x:auto}
+    .big span{font-size:38px}
+    .mini{width:50px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .fill,.detail{transition:none} .pill.live i{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Phantom Vikings</h1>
+      <div class="enc"><span id="encTitle">Waiting for data</span><span id="encZone"></span><span id="encTime"></span></div>
+    </div>
+    <div class="raid">
+      <div class="big"><span id="raidDps">0</span><small>raid DPS</small></div>
+      <div id="pill" class="pill"><i></i><span id="pillText">Connecting</span></div>
+    </div>
+  </header>
+
+  <nav id="tabs" role="tablist">
+    <button role="tab" data-tab="live" aria-selected="true">Live</button>
+    <button role="tab" data-tab="overall" aria-selected="false">Overall</button>
+    <button role="tab" data-tab="fights" aria-selected="false">Fights</button>
+  </nav>
+
+  <section id="p-live">
+    <p class="note" id="noteLive">Select a player to see their spells.</p>
+    <div class="grid cols"><span></span><span>Player</span><span class="r">Share</span><span class="r">DPS</span><span class="r dmgh">Damage</span><span class="r h1">Crit</span><span class="r h2">Direct hit</span><span class="r h3">Max hit</span></div>
+    <div class="meter" id="meterLive"></div>
+    <div class="empty" id="emptyLive"><strong>No fight yet</strong>Pull a boss or hit a dummy and the numbers show up here.</div>
+  </section>
+
+  <section id="p-overall" hidden>
+    <p class="note" id="noteOverall"></p>
+    <div class="grid cols"><span></span><span>Player</span><span class="r">Share</span><span class="r">DPS</span><span class="r dmgh">Damage</span><span class="r h1">Fights</span><span class="r h2"></span><span class="r h3"></span></div>
+    <div class="meter" id="meterOverall"></div>
+    <div class="empty" id="emptyOverall"><strong>Nothing recorded tonight</strong>Fights are added when they start. Finished ones stay in the totals.</div>
+  </section>
+
+  <section id="p-fights" hidden>
+    <div class="fights" id="fightList"></div>
+    <div class="empty" id="emptyFights"><strong>No finished fights yet</strong>A fight is saved when it ends and lasted at least 10 seconds.</div>
+  </section>
+</div>
+
+<script>
+const BAR_MODE = 'top';   // 'top' = bar relative to the best player, 'share' = bar width equals % of raid damage
+const STALE_S = 45;
+
+/*__LOADER__*/
+
+const JOBS = {PLD:'Paladin',WAR:'Warrior',DRK:'Dark Knight',GNB:'Gunbreaker',WHM:'White Mage',SCH:'Scholar',
+  AST:'Astrologian',SGE:'Sage',MNK:'Monk',DRG:'Dragoon',NIN:'Ninja',SAM:'Samurai',RPR:'Reaper',VPR:'Viper',
+  BRD:'Bard',MCH:'Machinist',DNC:'Dancer',BLM:'Black Mage',SMN:'Summoner',RDM:'Red Mage',PCT:'Pictomancer',BLU:'Blue Mage'};
+const TANKS = ['PLD','WAR','DRK','GNB'], HEALERS = ['WHM','SCH','AST','SGE'];
+const roleOf = j => TANKS.includes(j) ? 'tank' : HEALERS.includes(j) ? 'heal' : 'dps';
+
+const state = { data: null, tab: 'live', open: new Set() };
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
+const pct = (n, d = 1) => (Number(n) || 0).toFixed(d) + '%';
+const dur = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+// ACT gives max hit as "Spell name-12345"
+function maxHit(s) {
+  s = String(s || ''); const i = s.lastIndexOf('-');
+  if (i < 1) return esc(s);
+  return `<b>${fmt(s.slice(i + 1))}</b> ${esc(s.slice(0, i))}`;
+}
+
+/* ---------- meter rows ---------- */
+function makeRow(key) {
+  const row = document.createElement('div');
+  row.dataset.key = key;
+  row.innerHTML = `<button class="head" aria-expanded="false"><span class="fill"></span>
+      <span class="badge"></span><span class="name"></span><span class="share r"></span>
+      <span class="dps r"></span><span class="dmg r"></span><span class="c1 r"></span><span class="c2 r"></span><span class="c3 r"></span></button>
+    <div class="detail"><div class="inner"></div></div>`;
+  row.querySelector('.head').addEventListener('click', () => {
+    state.open.has(key) ? state.open.delete(key) : state.open.add(key);
+    render();
+  });
+  return row;
+}
+
+function updateRow(row, p, ctx) {
+  const key = row.dataset.key, open = state.open.has(key);
+  const cls = 'row ' + roleOf(p.job) + (p.name === ctx.me ? ' me' : '') + (open ? ' open' : '');
+  if (row.className !== cls) row.className = cls;
+  const q = s => row.querySelector(s);
+  const share = p.damage / ctx.total * 100;
+  q('.fill').style.width = (BAR_MODE === 'share' ? share : p.damage / ctx.top * 100).toFixed(1) + '%';
+  const b = q('.badge'); b.textContent = p.job || '?'; b.title = JOBS[p.job] || p.job || '';
+  q('.name').textContent = p.name;
+  q('.share').textContent = pct(share);
+  q('.dps').textContent = fmt(p.dps);
+  q('.dmg').textContent = fmt(p.damage);
+  if (ctx.scope === 'live') {
+    q('.c1').textContent = pct(p.crit); q('.c2').textContent = pct(p.dh, 0); q('.c3').innerHTML = maxHit(p.maxhit);
+  } else {
+    q('.c1').textContent = p.fights; q('.c2').textContent = ''; q('.c3').textContent = '';
+  }
+  q('.head').setAttribute('aria-expanded', open);
+  if (open) q('.inner').innerHTML = detailHTML(p, ctx.scope);
+  else if (q('.inner').firstChild) q('.inner').innerHTML = '';
+}
+
+function detailHTML(p, scope) {
+  const src = (scope === 'live' ? state.data.spells_live : state.data.spells_overall) || {};
+  const list = (src[p.name] || []);
+  const known = list.reduce((a, r) => a + r.total, 0);
+  const other = Math.max(0, p.damage - known);
+  const denom = Math.max(p.damage, known) || 1;
+  let chips = '';
+  if (scope === 'live') {
+    chips = `<div class="chips"><span>Crit<b>${pct(p.crit)}</b></span><span>Direct hit<b>${pct(p.dh)}</b></span>
+      <span>Crit + direct hit<b>${pct(p.cdh)}</b></span><span>Max hit<b>${maxHit(p.maxhit)}</b></span></div>`;
+  }
+  if (!list.length) {
+    return chips + '<div class="dim">No spell data yet. Spells show up as hits land.</div>';
+  }
+  const line = (name, hits, total, avg, mx, crit, dh, cls) => `<tr class="${cls || ''}"><td>${esc(name)}</td>
+      <td>${hits}</td><td>${fmt(total)}</td>
+      <td><div class="pc"><span class="mini"><i style="width:${Math.min(100, total / denom * 100).toFixed(1)}%"></i></span><b>${pct(total / denom * 100)}</b></div></td>
+      <td class="hm">${avg}</td><td class="hm">${mx}</td><td>${crit}</td><td>${dh}</td></tr>`;
+  let rows = list.map(r => line(r.spell, r.hits, r.total, fmt(r.avg), fmt(r.max), pct(r.crit), pct(r.dh, 0))).join('');
+  if (other > denom * 0.02) rows += line('Other (damage over time, pets, unlisted)', '', other, '', '', '', '', 'other');
+  return chips + `<table class="sp"><thead><tr><th>Spell</th><th>Hits</th><th>Damage</th><th>% of player</th>
+      <th class="hm">Average</th><th class="hm">Max</th><th>Crit</th><th>DH</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderMeter(container, players, scope, me) {
+  const map = container._map || (container._map = new Map());
+  const total = players.reduce((a, p) => a + p.damage, 0) || 1;
+  const top = Math.max(1, ...players.map(p => p.damage));
+  const ctx = { scope, total, top, me };
+  const seen = new Set();
+  players.forEach((p, i) => {
+    const key = scope + ':' + p.name; seen.add(key);
+    let row = map.get(key);
+    if (!row) { row = makeRow(key); map.set(key, row); }
+    updateRow(row, p, ctx);
+    if (container.children[i] !== row) container.insertBefore(row, container.children[i] || null);
+  });
+  for (const [k, row] of map) if (!seen.has(k)) { row.remove(); map.delete(k); }
+  container.hidden = !players.length;
+  return players.length;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const d = state.data;
+  ['live', 'overall', 'fights'].forEach(t => { $('#p-' + t).hidden = state.tab !== t; });
+  document.querySelectorAll('nav button').forEach(b =>
+    b.setAttribute('aria-selected', b.dataset.tab === state.tab));
+  if (!d) return;
+
+  const l = d.live || {};
+  $('#encTitle').textContent = l.title || 'No encounter';
+  $('#encZone').textContent = l.zone || '';
+  $('#encTime').textContent = l.duration ? dur(l.duration) : '';
+  $('#raidDps').textContent = fmt(l.dps);
+
+  if (state.tab === 'live') {
+    const n = renderMeter($('#meterLive'), l.players || [], 'live', d.me);
+    $('#emptyLive').hidden = n > 0;
+    $('#noteLive').hidden = n === 0;
+  } else if (state.tab === 'overall') {
+    const o = d.overall || { players: [] };
+    const n = renderMeter($('#meterOverall'), o.players || [], 'overall', d.me);
+    $('#emptyOverall').hidden = n > 0;
+    $('#noteOverall').textContent = n
+      ? `${o.fights} ${o.fights === 1 ? 'fight' : 'fights'}, ${dur(o.time)} in combat` + (o.includes_live ? ', includes the fight in progress' : '')
+      : '';
+  } else {
+    const h = [...(d.history || [])].reverse();
+    $('#emptyFights').hidden = h.length > 0;
+    $('#fightList').hidden = !h.length;
+    $('#fightList').innerHTML = !h.length ? '' :
+      '<div class="frow hd"><span>Fight</span><span class="r d">Length</span><span class="r d">Raid DPS</span></div>' +
+      h.map(f => `<div class="frow"><span class="t">${esc(f.title || 'Unnamed fight')}</span>
+        <span class="d">${dur(f.duration)}</span><span class="n">${fmt(f.dps)}</span></div>`).join('');
+  }
+}
+
+function paintStatus() {
+  const pill = $('#pill'), txt = $('#pillText');
+  if (!state.data) { pill.className = 'pill'; txt.textContent = 'Waiting for the relay'; return; }
+  const age = Math.round(Date.now() / 1000 - state.data.ts);
+  if (age > STALE_S) { pill.className = 'pill dead'; txt.textContent = 'Relay offline? Last data ' + age + ' s ago'; }
+  else if (state.data.live && state.data.live.active) { pill.className = 'pill live'; txt.textContent = 'In combat'; }
+  else { pill.className = 'pill'; txt.textContent = 'Out of combat'; }
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.tab = b.dataset.tab; render();
+});
+
+function next() { setTimeout(loop, document.hidden ? HIDDEN_POLL : POLL); }
+function loop() {
+  load(s => {
+    try { const j = s ? JSON.parse(s) : null; if (j && j.ts) { state.data = j; render(); } } catch (e) {}
+    paintStatus(); next();
+  }, () => {
+    const pill = $('#pill'); pill.className = 'pill dead'; $('#pillText').textContent = 'Connection problem'; next();
+  });
+}
+loop();
+setInterval(paintStatus, 1000);
+</script>
+</body>
+</html>

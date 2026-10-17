@@ -1,0 +1,13 @@
+{
+  "ws_url": "ws://127.0.0.1:10501/ws",
+  "endpoint": "https://script.google.com/macros/s/VLOZ-SVE-DEPLOYMENT-ID/exec",
+  "token": "ZMEN-NA-DLOUHY-NAHODNY-RETEZEC",
+  "token_in_body": true,
+  "my_name": "Stentik",
+  "push_interval_seconds": 4,
+  "heartbeat_seconds": 10,
+  "min_fight_seconds": 10,
+  "resume_session": true,
+  "crit_bit": "0x100",
+  "dh_bit": "0x200"
+}
