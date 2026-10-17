@@ -56,6 +56,7 @@ run_id = 0               # číslo aktuálního dungeon runu
 fights = []              # dokončené souboje večera
 committed_ids = set()    # které souboje (enc_id) už jsou v `fights`
 enc_id = 0               # číslo aktuálního souboje
+enc_death_order = []      # pořadí smrtí nepřátel (kvůli rozpoznání bosse s adds)
 enc_deaths = set()       # jména nepřátel, kteří zemřeli během souboje
 enc_wipe = False
 enc_victory = False
@@ -305,6 +306,7 @@ def handle_logline(line):
     elif t == "25" and len(line) > 3:                 # smrt: 25|ts|targetId|target|sourceId|source
         if str(line[2]).startswith("4") and line[3]:
             enc_deaths.add(str(line[3]).lower())
+            enc_death_order.append(str(line[3]).lower())
     elif t == "33" and len(line) > 3:                 # Director: 33|ts|instance|command|...
         cmd = str(line[3]).upper()
         if cmd in WIPE_CMDS:
@@ -397,6 +399,18 @@ def push(live):
         print("Push selhal:", e)
 
 
+def is_boss_pull(title, duration):
+    """Boss v dungeonu (odhad):
+    a) padl jediný nepřítel a pull trval aspoň 25 s, nebo
+    b) boss s adds: hlavní cíl souboje (název) zemřel jako POSLEDNÍ, jeho jméno
+       padlo jen jednou (adds bývají víc kusů stejného jména) a pull trval aspoň 40 s."""
+    if len(enc_death_order) == 1:
+        return duration >= 25
+    if len(enc_death_order) > 1 and title and duration >= 40:
+        return enc_death_order[-1] == title and enc_death_order.count(title) == 1
+    return False
+
+
 def commit(live):
     """Uloží dokončený souboj do večera (jednou na enc_id) i s výsledkem."""
     global last_sent, last_commit_ts
@@ -420,7 +434,7 @@ def commit(live):
         "kind": zone["kind"], "run": run_id, "zone_name": zone["name"], "duty": duty_name(),
         "result": result, "t": int(time.time()),
         # boss v dungeonu = pull, kde padl jediný nepřítel a trval aspoň 25 s (odhad)
-        "boss": zone["kind"] == "dungeon" and len(enc_deaths) == 1 and live["duration"] >= 25,
+        "boss": zone["kind"] == "dungeon" and is_boss_pull(title, live["duration"]),
     })
     if zone["kind"] == "dungeon":
         f["pull"] = len(scoped(fights)) + 1
@@ -498,6 +512,7 @@ async def main(args):
                         enc_id += 1
                         spells.clear()
                         enc_deaths.clear()
+                        enc_death_order.clear()
                         enc_wipe = enc_victory = False
                     if prev_live is not None and prev_live["active"] and not live["active"]:
                         commit(live)               # souboj právě skončil (finální čísla)
